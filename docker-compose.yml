@@ -1,0 +1,10 @@
+web:
+  image: nginx
+  ports:
+   - "8080:80"
+   - "8443:443"
+  volumes:
+   - ./www:/data/www:ro
+   - ./conf:/etc/nginx:ro
+   - ./keys:/etc/keys:ro
+   - ./logs:/var/log/nginx:rw
