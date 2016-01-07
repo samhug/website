@@ -9,3 +9,5 @@ web:
    - ./conf:/etc/nginx:ro
    - ./keys:/etc/keys:ro
    - ./logs:/var/log/nginx:rw
+  external_links:
+   - "sigflo_web_1:dev_web"
