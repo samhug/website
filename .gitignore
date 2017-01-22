@@ -1,2 +1,5 @@
-keys/
-logs/
+.env
+.docker_build/
+terraform.tfvars
+terraform.tfstate
+terraform.tfstate.backup

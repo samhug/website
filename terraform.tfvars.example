@@ -1,0 +1,6 @@
+
+heroku_email = "john.doe@example.com"
+heroku_api_key = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+cloudflare_email = "john.doe@example.com"
+cloudflare_token = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"

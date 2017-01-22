@@ -2,10 +2,21 @@
 
 ## https://sa.muelh.ug
 
-#### Powered By
-* [Docker](https://www.docker.com/)
-* [Nginx](https://www.nginx.com/)
-* [Hurricane Electric Hosted DNS](https://dns.he.net/)
-* [Let's Encrypt](https://letsencrypt.org/)
-* [Grayscale Bootstrap Template](http://startbootstrap.com/template-overviews/grayscale/)
+### Deployment
 
+```
+git clone https://github.com/samuelhug/website.git
+cd website
+cp terraform.tfvars.example terraform.tfvars
+
+# Fill in the appropriate credentials
+vim terraform.tfvars
+```
+
+```
+# View the proposed plan
+terraform plan
+
+# Deploy
+terraform apply
+```

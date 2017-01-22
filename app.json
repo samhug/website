@@ -1,0 +1,7 @@
+{
+  "name": "Personal Website",
+  "description": "Personal Website (sa.muelh.ug)",
+  "image": "heroku/go:1.6",
+  "mount_dir": "src/github.com/samuelhug/website",
+  "website": "http://sa.muelh.ug"
+}
