@@ -42,19 +42,51 @@ resource "heroku_app" "default" {
     }
 }
 
-# Associate a custom domain
-resource "heroku_domain" "default" {
+resource "heroku_domain" "muelh-ug" {
+    app = "${heroku_app.default.name}"
+    hostname = "${var.cloudflare_domain}"
+}
+resource "heroku_domain" "sa-muelh-ug" {
     app = "${heroku_app.default.name}"
     hostname = "${var.cloudflare_subdomain}.${var.cloudflare_domain}"
 }
+resource "heroku_domain" "m-h-ug" {
+  app = "${heroku_app.default.name}"
+  hostname = "m-h.ug"
+}
+resource "heroku_domain" "sa-m-h-ug" {
+  app = "${heroku_app.default.name}"
+  hostname = "sa.m-h.ug"
+}
 
-# Add a record to the domain
-resource "cloudflare_record" "website" {
+# Update CloudFlare DNS records
+resource "cloudflare_record" "m-h-ug" {
+  domain = "m-h.ug"
+  name = "m-h.ug"
+  value = "${heroku_domain.m-h-ug.hostname}.herokudns.com"
+  type = "CNAME"
+  proxied = true
+}
+resource "cloudflare_record" "sa-m-h-ug" {
+  domain = "m-h.ug"
+  name = "sa"
+  value = "${heroku_domain.sa-m-h-ug.hostname}.herokudns.com"
+  type = "CNAME"
+  proxied = true
+}
+resource "cloudflare_record" "muelh-ug" {
     domain = "${var.cloudflare_domain}"
-    name = "${var.cloudflare_subdomain}"
-    value = "${heroku_domain.default.hostname}.herokudns.com"
+    name = "${var.cloudflare_domain}"
+    value = "${heroku_domain.muelh-ug.hostname}.herokudns.com"
     type = "CNAME"
     proxied = true
+}
+resource "cloudflare_record" "sa-muelh-ug" {
+  domain = "${var.cloudflare_domain}"
+  name = "${var.cloudflare_subdomain}"
+  value = "${heroku_domain.sa-muelh-ug.hostname}.herokudns.com"
+  type = "CNAME"
+  proxied = true
 }
 
 output "heroku_appname" {
