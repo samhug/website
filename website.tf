@@ -4,13 +4,6 @@ variable "heroku_api_key" {}
 variable "cloudflare_email" {}
 variable "cloudflare_token" {}
 
-variable "cloudflare_domain" {
-	default = "muelh.ug"
-}
-variable "cloudflare_subdomain" {
-	default = "sa"
-}
-
 # Configure the Heroku provider
 provider "heroku" {
     email = "${var.heroku_email}"
@@ -44,11 +37,11 @@ resource "heroku_app" "default" {
 
 resource "heroku_domain" "muelh-ug" {
     app = "${heroku_app.default.name}"
-    hostname = "${var.cloudflare_domain}"
+    hostname = "muelh.ug"
 }
 resource "heroku_domain" "sa-muelh-ug" {
     app = "${heroku_app.default.name}"
-    hostname = "${var.cloudflare_subdomain}.${var.cloudflare_domain}"
+    hostname = "sa.muelh.ug"
 }
 resource "heroku_domain" "m-h-ug" {
   app = "${heroku_app.default.name}"
@@ -75,15 +68,15 @@ resource "cloudflare_record" "sa-m-h-ug" {
   proxied = true
 }
 resource "cloudflare_record" "muelh-ug" {
-    domain = "${var.cloudflare_domain}"
-    name = "${var.cloudflare_domain}"
+    domain = "muelh.ug"
+    name = "muelh.ug"
     value = "${heroku_domain.muelh-ug.hostname}.herokudns.com"
     type = "CNAME"
     proxied = true
 }
 resource "cloudflare_record" "sa-muelh-ug" {
-  domain = "${var.cloudflare_domain}"
-  name = "${var.cloudflare_subdomain}"
+  domain = "muelh.ug"
+  name = "sa"
   value = "${heroku_domain.sa-muelh-ug.hostname}.herokudns.com"
   type = "CNAME"
   proxied = true
