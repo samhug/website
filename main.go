@@ -6,7 +6,10 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"fmt"
 )
+
+var PRIMARY_HOST = "sa.m-h.ug"
 
 func main() {
 	port := os.Getenv("PORT")
@@ -17,8 +20,9 @@ func main() {
 
 	r := gin.Default()
 	r.Use(func(c *gin.Context) {
-		log.Println("Host:", c.Request.URL.Hostname())
-
+		if c.Request.Host != PRIMARY_HOST {
+			c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("https://%s%s", PRIMARY_HOST, c.Request.URL))
+		}
 	})
 
 	r.Use(gin.WrapF(func(w http.ResponseWriter, r *http.Request) {
