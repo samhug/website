@@ -1,6 +1,6 @@
 # My Personal Website
 
-## https://sa.muelh.ug
+## https://sa.m-h.ug
 
 ### Deployment
 
