@@ -14,6 +14,9 @@ vim terraform.tfvars
 ```
 
 ```
+# Make sure we have the providers installed
+terraform init
+
 # View the proposed plan
 terraform plan
 

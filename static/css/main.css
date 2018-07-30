@@ -30,6 +30,33 @@ h6 {
     letter-spacing: 1px;
 }
 
+
+.name-heading {
+    font-size: 100px;
+    text-transform: inherit;
+}
+
+.name {
+    font-family: Montserrat,"Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-weight: 600;
+}
+
+span.name-dot {
+    font-size: smaller;
+    font-weight: 400;
+    letter-spacing: normal;
+}
+
+span.name-dash {
+    font-size: smaller;
+    font-weight: 400;
+}
+
+span.name-space {
+    letter-spacing: 3px;
+}
+
+
 p {
     margin: 0 0 25px;
     font-size: 18px;
@@ -160,7 +187,7 @@ a:focus {
     vertical-align: middle;
 }
 
-.intro .intro-body .brand-heading {
+.intro .intro-body .name-heading {
     font-size: 40px;
 }
 
@@ -174,7 +201,7 @@ a:focus {
         padding: 0;
     }
 
-    .intro .intro-body .brand-heading {
+    .intro .intro-body .name-heading {
         font-size: 100px;
     }
 

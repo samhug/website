@@ -1,4 +1,3 @@
-
 variable "heroku_email" {}
 variable "heroku_api_key" {}
 variable "cloudflare_email" {}
@@ -6,14 +5,14 @@ variable "cloudflare_token" {}
 
 # Configure the Heroku provider
 provider "heroku" {
-    email = "${var.heroku_email}"
-    api_key = "${var.heroku_api_key}"
+  email   = "${var.heroku_email}"
+  api_key = "${var.heroku_api_key}"
 }
 
 # Configure the CloudFlare provider
 provider "cloudflare" {
-    email = "${var.cloudflare_email}"
-    token = "${var.cloudflare_token}"
+  email = "${var.cloudflare_email}"
+  token = "${var.cloudflare_token}"
 }
 
 resource "random_id" "app" {
@@ -27,65 +26,97 @@ resource "random_id" "app" {
 
 # Create a new Heroku app
 resource "heroku_app" "default" {
-    name = "web${random_id.app.hex}"
-    region = "us"
+  name   = "web${random_id.app.hex}"
+  region = "us"
 
-    provisioner "local-exec" {
-        command = "git push --force --set-upstream https://git:${var.heroku_api_key}@git.heroku.com/${heroku_app.default.name}.git master:master"
-    }
+  provisioner "local-exec" {
+    command = "git push --force --set-upstream https://git:${var.heroku_api_key}@git.heroku.com/${heroku_app.default.name}.git master:master"
+  }
 }
 
 resource "heroku_domain" "muelh-ug" {
-    app = "${heroku_app.default.name}"
-    hostname = "muelh.ug"
+  app      = "${heroku_app.default.name}"
+  hostname = "muelh.ug"
 }
+
 resource "heroku_domain" "sa-muelh-ug" {
-    app = "${heroku_app.default.name}"
-    hostname = "sa.muelh.ug"
+  app      = "${heroku_app.default.name}"
+  hostname = "sa.muelh.ug"
 }
+
+resource "heroku_domain" "www-muelh-ug" {
+  app      = "${heroku_app.default.name}"
+  hostname = "www.muelh.ug"
+}
+
 resource "heroku_domain" "m-h-ug" {
-  app = "${heroku_app.default.name}"
+  app      = "${heroku_app.default.name}"
   hostname = "m-h.ug"
 }
+
 resource "heroku_domain" "sa-m-h-ug" {
-  app = "${heroku_app.default.name}"
+  app      = "${heroku_app.default.name}"
   hostname = "sa.m-h.ug"
+}
+
+resource "heroku_domain" "www-m-h-ug" {
+  app      = "${heroku_app.default.name}"
+  hostname = "www.m-h.ug"
 }
 
 # Update CloudFlare DNS records
 resource "cloudflare_record" "m-h-ug" {
-  domain = "m-h.ug"
-  name = "m-h.ug"
-  value = "${heroku_domain.m-h-ug.hostname}.herokudns.com"
-  type = "CNAME"
+  domain  = "m-h.ug"
+  name    = "m-h.ug"
+  value   = "${heroku_domain.m-h-ug.hostname}.herokudns.com"
+  type    = "CNAME"
   proxied = true
 }
+
 resource "cloudflare_record" "sa-m-h-ug" {
-  domain = "m-h.ug"
-  name = "sa"
-  value = "${heroku_domain.sa-m-h-ug.hostname}.herokudns.com"
-  type = "CNAME"
+  domain  = "m-h.ug"
+  name    = "sa"
+  value   = "${heroku_domain.sa-m-h-ug.hostname}.herokudns.com"
+  type    = "CNAME"
   proxied = true
 }
-resource "cloudflare_record" "muelh-ug" {
-    domain = "muelh.ug"
-    name = "muelh.ug"
-    value = "${heroku_domain.muelh-ug.hostname}.herokudns.com"
-    type = "CNAME"
-    proxied = true
+
+resource "cloudflare_record" "www-m-h-ug" {
+  domain  = "m-h.ug"
+  name    = "www"
+  value   = "${heroku_domain.www-m-h-ug.hostname}.herokudns.com"
+  type    = "CNAME"
+  proxied = true
 }
+
+resource "cloudflare_record" "muelh-ug" {
+  domain  = "muelh.ug"
+  name    = "muelh.ug"
+  value   = "${heroku_domain.muelh-ug.hostname}.herokudns.com"
+  type    = "CNAME"
+  proxied = true
+}
+
 resource "cloudflare_record" "sa-muelh-ug" {
-  domain = "muelh.ug"
-  name = "sa"
-  value = "${heroku_domain.sa-muelh-ug.hostname}.herokudns.com"
-  type = "CNAME"
+  domain  = "muelh.ug"
+  name    = "sa"
+  value   = "${heroku_domain.sa-muelh-ug.hostname}.herokudns.com"
+  type    = "CNAME"
+  proxied = true
+}
+
+resource "cloudflare_record" "www-muelh-ug" {
+  domain  = "muelh.ug"
+  name    = "www"
+  value   = "${heroku_domain.www-muelh-ug.hostname}.herokudns.com"
+  type    = "CNAME"
   proxied = true
 }
 
 output "heroku_appname" {
-    value = "${heroku_app.default.name}"
+  value = "${heroku_app.default.name}"
 }
 
 output "web_url" {
-    value = "${heroku_app.default.web_url}"
+  value = "${heroku_app.default.web_url}"
 }
