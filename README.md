@@ -5,7 +5,7 @@
 ### Deployment
 
 ```
-git clone https://github.com/samuelhug/website.git
+git clone https://github.com/samhug/website.git
 cd website
 cp terraform.tfvars.example terraform.tfvars
 
