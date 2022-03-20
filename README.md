@@ -2,11 +2,12 @@
 
 ## https://sa.m-h.ug
 
-### Deployment
+### Manual deployment steps
+- Clone repository
+`git clone https://github.com/samhug/website.git; cd website`
 
-```
-git clone https://github.com/samhug/website.git
-cd website
-nix-build -A deploy-script --out-link ./deploy
-FLY_ACCESS_TOKEN=<redacted> ./deploy
-```
+- Authenticate to fly.io
+`flyctl auth login` or `export FLY_API_TOKEN=...`
+
+- Deploy
+`eval (nix-build -A deployScript)`

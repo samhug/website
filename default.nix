@@ -3,127 +3,87 @@
 
 let
   inherit (pkgs)
-    buildEnv
-    dockerTools
-    flyctl
-    formats
-    gzip
     lib
-    runCommand
+    callPackage
+    flyctl
+    mkShell
     skopeo
+    sources # provided by overlay
+    writeShellScript
+    writeShellScriptBin
     ;
 
-  fly-cfg =
-    let
-      internalPort = 8000;
-    in
-    {
-      app = "web163c91d04b1448cabef86f9f";
+  fenix = import sources.fenix { inherit pkgs; };
 
-      build.image = "registry.fly.io/${fly-cfg.app}:latest";
-
-      deploy.strategy = "immediate";
-
-      services = [
-        {
-          internal_port = internalPort;
-          protocol = "tcp";
-          ports = [
-            {
-              handlers = [ "http" ];
-              port = "80";
-            }
-            {
-              handlers = [ "tls" "http" ];
-              port = "443";
-            }
-          ];
-        }
-      ];
-      # statics = [
-      #   {
-      #     guest_path = "/app/public";
-      #     url_prefix = "/public";
-      #   }
-      # ];
-      env = {
-        RUST_LOG = "debug";
-        RUST_BACKTRACE = "1";
-        ROCKET_ADDRESS = "0.0.0.0";
-        ROCKET_PORT = "${toString internalPort}";
-      };
-    };
-
-  mkFlyTOML = cfg: (formats.toml { }).generate "fly.toml" cfg;
-  fly-toml = mkFlyTOML fly-cfg;
-
-  app = pkgsLinux.rustPlatform.buildRustPackage rec {
-    name = "app";
-    src = ./app;
-    cargoSha256 = "sha256-8fQ7Tovh0YI/cDJWOjn8DZuo2vX23v1IyL3cnhNYIiw=";
-  };
-
-  pkgsLinux = import "${pkgs.path}" { system = "x86_64-linux"; };
-
-  initScript = pkgs.writeScript "init" ''
-    #! ${pkgsLinux.execline}/bin/execlineb -P
-
-    export PATH "${with pkgsLinux; lib.makeBinPath [
-      app
-      execline
-    ]}"
-
-    ${app}/bin/app
-  '';
-
-  imageCfg = {
-    name = "${fly-cfg.app}";
-    tag = "latest";
-    contents = [
-      (buildEnv {
-        name = "root";
-        paths = [
-          (runCommand "root" { } ''
-            mkdir $out
-            cd $out
-
-            mkdir -p bin www
-            ln -s ${initScript} bin/init
-            cp -r ${./static} www/public
-          '')
-        ];
-      })
+  rustToolchain = with fenix;
+    combine [
+      stable.rustc
+      stable.cargo
     ];
-    config = {
-      Cmd = [ "/bin/init" ];
+
+  app =
+    let
+      naersk = callPackage sources.naersk {
+        cargo = rustToolchain;
+        rustc = rustToolchain;
+      };
+    in
+    naersk.buildPackage {
+      src = lib.cleanSource ./app;
     };
-  };
 
-  deploy-script = pkgs.writeShellScript "deploy" ''
-    set -e
+  inherit (callPackage ./fly.nix {
+    withRustLog = "debug";
+  })
+    flyConfig
+    flyToml
+    flyctlWrapped
+    ;
 
-    export PATH="${lib.makeBinPath [ flyctl gzip skopeo ]}:$PATH"
+  dockerImage = callPackage ./docker-image.nix { inherit flyConfig app; };
 
-    if [ -z "$FLY_ACCESS_TOKEN" ]; then
-      echo "FLY_ACCESS_TOKEN not found in environment"
+  deployScript = writeShellScript "deploy" ''
+    set -euo pipefail
+
+    token=$(${flyctl}/bin/flyctl auth token 2>/dev/null || true)
+    if [ -z "$token" ]; then
+      echo 'Error: Missing fly.io authentication token'
+      echo 'Consider running `flyctl auth login` or setting one of $FLY_ACCESS_TOKEN or $FLY_API_TOKEN'
       exit 1
     fi
 
-    skopeo copy \
+    image=registry.fly.io/${flyConfig.app}:${dockerImage.imageConfig.tag}
+
+    ${skopeo}/bin/skopeo copy \
       --insecure-policy \
       --dest-username x \
-      --dest-password "$FLY_ACCESS_TOKEN" \
-      docker-archive:<(${dockerTools.streamLayeredImage imageCfg} | gzip --fast) \
-      docker://registry.fly.io/${fly-cfg.app}:latest
+      --dest-password "$token" \
+      docker-archive:<(${dockerImage.archiveWriter}) \
+      docker://$image
 
-    flyctl deploy --config ${fly-toml}
+    ${flyctl}/bin/flyctl deploy \
+      --config ${flyToml} \
+      --image $image
   '';
 
+  devShell = mkShell {
+    name = "website";
+    buildInputs = [
+      flyctl
+      rustToolchain
+      fenix.rust-analyzer
+
+      # an app specific flyctl command that has this app's fly.toml hardcoded
+      # (writeShellScriptBin "flyctl" "exec ${flyctl}/bin/flyctl --config ${flyToml} $@")
+    ];
+  };
 in
 {
   inherit
+    devShell
     app
-    deploy-script
-    fly-toml
+    dockerImage
+    deployScript
+    flyToml
     ;
 }
