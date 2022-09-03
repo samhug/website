@@ -15,10 +15,20 @@ pub struct Config {
 
 impl Config {
     pub fn from_default_sources() -> Result<Self, figment::Error> {
-        let defaults = map![
-            "listen_addr" => "0.0.0.0:8000",
-            "static_files_dir" => "/www/public",
+        let mut defaults = map![
+            "listen_addr" => "127.0.0.1:8000",
         ];
+
+        #[cfg(debug_assertions)]
+        {
+            defaults
+                .insert(
+                    "static_files_dir",
+                    concat!(env!("CARGO_MANIFEST_DIR"), "/static"),
+                )
+                .unwrap();
+        }
+
         Figment::from(Serialized::from(&defaults, "default"))
             .merge(Env::prefixed("APP_"))
             .extract()

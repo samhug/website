@@ -18,17 +18,17 @@ pub type Request = axum::http::Request<RequestBody>;
 pub type RequestBody = axum::body::Body;
 pub type Response = axum::response::Response;
 
-// async fn hello_handler(_req: Request) -> Html<&'static str> {
-//     Html("<h2>Hello World!</h2>")
-// }
+async fn hello_handler(_req: Request) -> Html<&'static str> {
+    Html("<h2>Hello World!</h2>")
+}
 
-// async fn debug_handler(req: Request) -> Response {
-//     let body = format!("headers: {:#?}", req.headers());
-//     http::Response::builder()
-//         .status(200)
-//         .body(Body::from(body).map_err(axum::Error::new).boxed_unsync())
-//         .unwrap_or_log()
-// }
+async fn debug_handler(req: Request) -> Response {
+    let body = format!("headers: {:#?}", req.headers());
+    http::Response::builder()
+        .status(200)
+        .body(Body::from(body).map_err(axum::Error::new).boxed_unsync())
+        .unwrap_or_log()
+}
 
 async fn fallback_handler(method: hyper::Method, uri: hyper::Uri) -> (StatusCode, String) {
     (
@@ -45,11 +45,14 @@ pub fn new_service(cfg: &Config) -> BoxCloneService<Request, Response, BoxError>
         });
 
     let router = Router::new()
-        // .route("/_hello", routing::get(hello_handler))
-        // .route("/_debug", routing::get(debug_handler))
-        // serve static files
-        .route("/*path", static_files_handler)
-        .fallback(fallback_handler.into_service());
+        .route("/_hello", routing::get(hello_handler))
+        .route("/_debug", routing::get(debug_handler))
+        // if non of the above routes match, defer to the static file handler
+        .fallback(
+            Router::new()
+                .route("/*path", static_files_handler)
+                .fallback(fallback_handler.into_service()),
+        );
 
     ServiceBuilder::new()
         .concurrency_limit(10)
