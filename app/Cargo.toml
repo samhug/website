@@ -5,6 +5,9 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bin]]
+name = "server"
+
 [dependencies]
 axum = "0.5.15"
 figment = { version = "0.10.6", features = ["env"] }

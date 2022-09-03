@@ -13,14 +13,14 @@
 let
   init = writeScript "init" ''
     #!/bin/sh
-    set -e
-    export PATH=$PATH:${lib.makeBinPath [ app ]}:/bin
 
-    ${app}/bin/app
+    export PATH=/bin
+
+    ${app}/bin/server
   '';
 
   wwwPublic = runCommand "www-public" { } ''
-    mkdir -p $out/www $out/www/public
+    mkdir -p $out/www/public
     cp -r ${./static}/* $out/www/public/
   '';
 
@@ -28,13 +28,11 @@ let
     name = "${flyConfig.app}";
     tag = "latest";
     contents = [
-      (runCommand "root" { } ''
+      (runCommand "sh" { } ''
         mkdir -p $out/bin
         ln -s ${runtimeShell} $out/bin/sh
       '')
       app
-      # coreutils
-      # iproute
       wwwPublic
     ];
     config = {

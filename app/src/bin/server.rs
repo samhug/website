@@ -1,9 +1,6 @@
-mod config;
-mod service;
-
 use tower::make::Shared;
 
-use crate::{config::Config, service::new_service};
+use app::{config::Config, service::new_service};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

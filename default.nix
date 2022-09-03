@@ -37,7 +37,6 @@ let
   })
     flyConfig
     flyToml
-    flyctlWrapped
     ;
 
   dockerImage = callPackage ./docker-image.nix { inherit flyConfig app; };
