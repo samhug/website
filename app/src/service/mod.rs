@@ -79,12 +79,37 @@ pub fn new_service(cfg: &Config) -> BoxCloneService<Request, Response, BoxError>
     let steer_svc = tower::steer::Steer::new(
         vec![router, redirect_svc],
         |req: &Request, _services: &[_]| {
-            let is_https = req.uri().scheme() == Some(&uri::Scheme::HTTPS);
-            let is_correct_uri_authority =
-                req.uri().authority() == Some(&uri::Authority::from_static(HTTP_HOST));
-            let is_correct_host_header = req.headers().get(header::HOST)
-                == Some(&header::HeaderValue::from_static(HTTP_HOST));
-            if is_https && (is_correct_uri_authority || is_correct_host_header) {
+            let is_https = req
+                .headers()
+                .get("x-forwarded-proto")
+                .and_then(|v| v.to_str().ok())
+                .or_else(|| req.uri().scheme_str())
+                == Some("https");
+
+            let host_matches = req
+                .headers()
+                .get("host")
+                .map(|v| v.to_str().ok() == Some(HTTP_HOST))
+                .or_else(|| {
+                    req.uri()
+                        .authority()
+                        .map(|a| a.to_string().as_str() == HTTP_HOST)
+                })
+                .unwrap_or(false);
+
+            let is_health_check = req
+                .headers()
+                .get("user-agent")
+                .map(|v| v.to_str().ok() == Some("Consul Health Check"))
+                .unwrap_or(false);
+
+            let needs_redirect = (!is_https || !host_matches) && !is_health_check;
+
+            tracing::debug!("uri: {:?}", req.uri());
+            tracing::debug!("headers: {:?}", req.headers());
+            tracing::debug!("is_https: {is_https}, host_matches: {host_matches}, is_health_check: {is_health_check}, needs_redirect: {needs_redirect}");
+
+            if !needs_redirect {
                 0 // Index of `router`
             } else {
                 1 // Index of `redirect_svc`
