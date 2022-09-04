@@ -58,7 +58,7 @@ async fn redirect_handler(
     )
 }
 
-pub fn new_service(cfg: Arc<Config>) -> BoxCloneService<Request, Response, BoxError> {
+pub fn new(cfg: Arc<Config>) -> BoxCloneService<Request, Response, BoxError> {
     let static_files_handler = routing::get_service(ServeDir::new(&cfg.static_files_dir))
         .handle_error(|err| async move {
             tracing::error!("failed to serve static file: {}", err);
@@ -82,12 +82,16 @@ pub fn new_service(cfg: Arc<Config>) -> BoxCloneService<Request, Response, BoxEr
         vec![router, redirect_svc],
         move |req: &Request, _services: &[_]| {
             let needs_https_redirect = {
-                let is_https = req
-                    .headers()
-                    .get("x-forwarded-proto")
-                    .and_then(|v| v.to_str().ok())
-                    .or_else(|| req.uri().scheme_str())
-                    == Some("https");
+                let is_https =
+                    // Check x-forwarded-proto header
+                    req
+                        .headers()
+                        .get("x-forwarded-proto")
+                        .map(header::HeaderValue::to_str)
+                        .and_then(Result::ok)
+                        .map(|proto| proto == "https")
+                        .unwrap_or(false)
+                        ;
                 cfg.https_redirect && !is_https
             };
 
@@ -98,7 +102,9 @@ pub fn new_service(cfg: Arc<Config>) -> BoxCloneService<Request, Response, BoxEr
                     let host_matches = req
                         .headers()
                         .get(header::HOST)
-                        .map(|v| v.to_str().ok() == Some(canonical_host))
+                        .map(header::HeaderValue::to_str)
+                        .and_then(Result::ok)
+                        .map(|host| host == canonical_host)
                         .unwrap_or(false);
                     !host_matches
                 })
@@ -108,7 +114,9 @@ pub fn new_service(cfg: Arc<Config>) -> BoxCloneService<Request, Response, BoxEr
                 // && req
                 //     .headers()
                 //     .get(header::USER_AGENT)
-                //     .map(|v| v.to_str().ok() == Some("Consul Health Check"))
+                //     .map(header::HeaderValue::to_str)
+                //     .and_then(Result::ok)
+                //     .map(|user_agent| user_agent == "Consul Health Check")
                 //     .unwrap_or(false)
                 ;
 
