@@ -29,7 +29,7 @@ let
             grace_period = "1s";
             interval = "15s";
             timeout = "2s";
-            path = "/";
+            path = "/_health";
             method = "get";
             protocol = "http";
           }

@@ -2,7 +2,6 @@ use axum::{
     body::{Body, HttpBody},
     handler::Handler,
     http::{self, header, uri, StatusCode, Uri},
-    response::Html,
     routing, BoxError, Router,
 };
 
@@ -11,16 +10,19 @@ use tower_http::services::ServeDir;
 
 use tracing_unwrap::ResultExt;
 
+use std::sync::Arc;
+
 use crate::config::Config;
 
 pub type Request = axum::http::Request<RequestBody>;
 pub type RequestBody = axum::body::Body;
 pub type Response = axum::response::Response;
 
-const HTTP_HOST: &str = "sa.m-h.ug";
+const HEALTH_CHECK_ENDPOINT: &str = "/_health";
+const HTTP_HOST: &str = "sa.m-h.ug"; // TODO:
 
-async fn hello_handler(_req: Request) -> Html<&'static str> {
-    Html("<h2>Hello World!</h2>")
+async fn health_check_handler(_req: Request) -> &'static str {
+    "not dead yet..."
 }
 
 async fn debug_handler(req: Request) -> Response {
@@ -56,7 +58,7 @@ async fn redirect_handler(
     )
 }
 
-pub fn new_service(cfg: &Config) -> BoxCloneService<Request, Response, BoxError> {
+pub fn new_service(cfg: Arc<Config>) -> BoxCloneService<Request, Response, BoxError> {
     let static_files_handler = routing::get_service(ServeDir::new(&cfg.static_files_dir))
         .handle_error(|err| async move {
             tracing::error!("failed to serve static file: {}", err);
@@ -64,7 +66,7 @@ pub fn new_service(cfg: &Config) -> BoxCloneService<Request, Response, BoxError>
         });
 
     let router = Router::new()
-        .route("/_hello", routing::get(hello_handler))
+        .route(HEALTH_CHECK_ENDPOINT, routing::get(health_check_handler))
         .route("/_debug", routing::get(debug_handler))
         // if none of the above routes match, defer to the static file handler
         .fallback(
@@ -78,36 +80,43 @@ pub fn new_service(cfg: &Config) -> BoxCloneService<Request, Response, BoxError>
 
     let steer_svc = tower::steer::Steer::new(
         vec![router, redirect_svc],
-        |req: &Request, _services: &[_]| {
-            let is_https = req
-                .headers()
-                .get("x-forwarded-proto")
-                .and_then(|v| v.to_str().ok())
-                .or_else(|| req.uri().scheme_str())
-                == Some("https");
+        move |req: &Request, _services: &[_]| {
+            let needs_https_redirect = {
+                let is_https = req
+                    .headers()
+                    .get("x-forwarded-proto")
+                    .and_then(|v| v.to_str().ok())
+                    .or_else(|| req.uri().scheme_str())
+                    == Some("https");
+                cfg.https_redirect && !is_https
+            };
 
-            let host_matches = req
-                .headers()
-                .get("host")
-                .map(|v| v.to_str().ok() == Some(HTTP_HOST))
-                .or_else(|| {
-                    req.uri()
-                        .authority()
-                        .map(|a| a.to_string().as_str() == HTTP_HOST)
+            let needs_host_redirect = cfg
+                .host_redirect
+                .as_ref()
+                .map(|canonical_host| {
+                    let host_matches = req
+                        .headers()
+                        .get(header::HOST)
+                        .map(|v| v.to_str().ok() == Some(canonical_host))
+                        .unwrap_or(false);
+                    !host_matches
                 })
                 .unwrap_or(false);
 
-            let is_health_check = req
-                .headers()
-                .get("user-agent")
-                .map(|v| v.to_str().ok() == Some("Consul Health Check"))
-                .unwrap_or(false);
+            let is_health_check = req.uri().path() == HEALTH_CHECK_ENDPOINT
+                // && req
+                //     .headers()
+                //     .get(header::USER_AGENT)
+                //     .map(|v| v.to_str().ok() == Some("Consul Health Check"))
+                //     .unwrap_or(false)
+                ;
 
-            let needs_redirect = (!is_https || !host_matches) && !is_health_check;
+            let needs_redirect = (needs_https_redirect || needs_host_redirect) && !is_health_check;
 
-            tracing::debug!("uri: {:?}", req.uri());
-            tracing::debug!("headers: {:?}", req.headers());
-            tracing::debug!("is_https: {is_https}, host_matches: {host_matches}, is_health_check: {is_health_check}, needs_redirect: {needs_redirect}");
+            // tracing::debug!("uri: {:?}", req.uri());
+            // tracing::debug!("headers: {:?}", req.headers());
+            // tracing::debug!("needs_https_redirect: {needs_https_redirect}, needs_host_redirect: {needs_host_redirect}, is_health_check: {is_health_check}, needs_redirect: {needs_redirect}");
 
             if !needs_redirect {
                 0 // Index of `router`
