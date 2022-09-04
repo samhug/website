@@ -21,12 +21,10 @@ impl Config {
 
         #[cfg(debug_assertions)]
         {
-            defaults
-                .insert(
-                    "static_files_dir",
-                    concat!(env!("CARGO_MANIFEST_DIR"), "/static"),
-                )
-                .unwrap();
+            defaults.insert(
+                "static_files_dir",
+                concat!(env!("CARGO_MANIFEST_DIR"), "/static"),
+            );
         }
 
         Figment::from(Serialized::from(&defaults, "default"))

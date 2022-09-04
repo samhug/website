@@ -19,9 +19,9 @@ let
     ${app}/bin/server
   '';
 
-  wwwPublic = runCommand "www-public" { } ''
-    mkdir -p $out/www/public
-    cp -r ${./static}/* $out/www/public/
+  wwwStatic = runCommand "www-static" { } ''
+    mkdir -p $out/www/static
+    cp -r ${./static}/* $out/www/static/
   '';
 
   imageConfig = {
@@ -33,7 +33,7 @@ let
         ln -s ${runtimeShell} $out/bin/sh
       '')
       app
-      wwwPublic
+      wwwStatic
     ];
     config = {
       Cmd = [ "${init}" ];

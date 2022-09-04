@@ -37,8 +37,8 @@ let
       }
     ];
     env = {
-      APP_LISTEN_ADDRESS = "0.0.0.0:${toString internalPort}";
-      APP_STATIC_FILES_DIR = "/www/public";
+      APP_LISTEN_ADDR = "0.0.0.0:${toString internalPort}";
+      APP_STATIC_FILES_DIR = "/www/static";
     }
     // lib.optionalAttrs (withRustLog != null) { RUST_LOG = withRustLog; }
     ;
