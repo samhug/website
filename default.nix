@@ -51,8 +51,10 @@ let
       exit 1
     fi
 
+    # docker image upload target
     image=registry.fly.io/${flyConfig.app}:${dockerImage.imageConfig.tag}
 
+    # upload the docker image
     ${skopeo}/bin/skopeo copy \
       --insecure-policy \
       --dest-username x \
@@ -60,6 +62,7 @@ let
       docker-archive:<(${dockerImage.archiveWriter}) \
       docker://$image
 
+    # trigger deployment of the uploaded docker image
     ${flyctl}/bin/flyctl deploy \
       --config ${flyToml} \
       --image $image

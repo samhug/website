@@ -19,21 +19,26 @@ let
     ${app}/bin/server
   '';
 
-  wwwStatic = runCommand "www-static" { } ''
-    mkdir -p $out/www/static
-    cp -r ${./static}/* $out/www/static/
+  mkStaticFilesDir = path: runCommand "static-files-dir" { } ''
+    mkdir -p $out/${path}
+    cp -r ${./static}/* $out/${path}/
   '';
 
   imageConfig = {
     name = "${flyConfig.app}";
     tag = "latest";
     contents = [
-      (runCommand "sh" { } ''
-        mkdir -p $out/bin
+      (runCommand "rootfs-base-layer" { } ''
+        mkdir -p $out{/bin,/tmp,/usr,/var/lib}
+
+        # symlink /usr/bin to /bin
+        ln -s $out/bin $out/usr/bin
+
+        # symlink our /bin/sh
         ln -s ${runtimeShell} $out/bin/sh
       '')
+      (mkStaticFilesDir "/www/static")
       app
-      wwwStatic
     ];
     config = {
       Cmd = [ "${init}" ];
@@ -46,7 +51,7 @@ in
   # docker image in the standard tarball format
   tarball = dockerTools.buildImage imageConfig;
 
-  # script that constucts a gzip'ed docker archive and streams it to stdout
+  # script that constructs a gzip'ed docker archive and streams it to stdout
   archiveWriter = writeShellScript "image-writer-${flyConfig.app}" ''
     set -euo pipefail
     ${dockerTools.streamLayeredImage imageConfig} | ${gzip}/bin/gzip --fast
