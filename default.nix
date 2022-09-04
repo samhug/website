@@ -33,7 +33,7 @@ let
     };
 
   inherit (callPackage ./fly.nix {
-    withRustLog = "debug";
+    # rustLog = "debug";
   })
     flyConfig
     flyToml

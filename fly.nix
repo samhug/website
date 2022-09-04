@@ -3,7 +3,7 @@
   ## ===
 , appName ? "web163c91d04b1448cabef86f9f"
 , internalPort ? 8000
-, withRustLog ? null
+, rustLog ? null
 }:
 
 let
