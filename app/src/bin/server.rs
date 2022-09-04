@@ -10,7 +10,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let cfg = Arc::new(Config::from_default_sources()?);
 
-    tracing::info!("starting server with config: {:?}", cfg);
+    tracing::info!("starting server with config: {:#?}", cfg);
 
     let server = axum::Server::bind(&cfg.listen_addr).serve(Shared::new(service::new(cfg)));
 
