@@ -40,7 +40,7 @@ let
       APP_LISTEN_ADDR = "0.0.0.0:${toString internalPort}";
       APP_STATIC_FILES_DIR = "/www/static";
     }
-    // lib.optionalAttrs (withRustLog != null) { RUST_LOG = withRustLog; }
+    // lib.optionalAttrs (rustLog != null) { RUST_LOG = rustLog; }
     ;
   };
 
