@@ -39,6 +39,7 @@ dependencies = [
  "axum",
  "figment",
  "http-body",
+ "http_redirect",
  "serde",
  "tokio",
  "tower",
@@ -335,6 +336,19 @@ name = "http-range-header"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0bfe8eed0a9285ef776bb792479ea3834e8b94e13d615c2f66d03dd50a435a29"
+
+[[package]]
+name = "http_redirect"
+version = "0.1.0"
+source = "git+https://github.com/samhug/http_redirect#a63e5613f05ecaa76711369d07b8fd24df4e8712"
+dependencies = [
+ "http",
+ "http-body",
+ "pin-project-lite",
+ "tower-layer",
+ "tower-service",
+ "tracing",
+]
 
 [[package]]
 name = "httparse"

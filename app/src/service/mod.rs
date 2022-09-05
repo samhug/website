@@ -1,7 +1,9 @@
+mod redirect;
+
 use axum::{
     body::{Body, HttpBody},
     handler::Handler,
-    http::{self, header, uri, StatusCode, Uri},
+    http::{self, StatusCode, Uri},
     routing, BoxError, Router,
 };
 
@@ -13,13 +15,13 @@ use tracing_unwrap::ResultExt;
 use std::sync::Arc;
 
 use crate::config::Config;
+use http_redirect::RedirectLayer;
 
 pub type Request = axum::http::Request<RequestBody>;
 pub type RequestBody = axum::body::Body;
 pub type Response = axum::response::Response;
 
 const HEALTH_CHECK_ENDPOINT: &str = "/_health";
-const HTTP_HOST: &str = "sa.m-h.ug"; // TODO:
 
 async fn health_check_handler(_req: Request) -> &'static str {
     "not dead yet..."
@@ -37,24 +39,6 @@ async fn fallback_handler(method: http::Method, uri: Uri) -> (StatusCode, String
     (
         StatusCode::NOT_FOUND,
         format!("the reqeusted resource does not exist\n{} {}", method, uri),
-    )
-}
-
-async fn redirect_handler(
-    request_uri: Uri,
-) -> (StatusCode, [(header::HeaderName, header::HeaderValue); 1]) {
-    let target_uri = {
-        let mut parts = request_uri.into_parts();
-        parts.scheme = Some(uri::Scheme::HTTPS);
-        parts.authority = Some(uri::Authority::from_static(HTTP_HOST));
-        Uri::from_parts(parts).unwrap()
-    };
-    (
-        StatusCode::MOVED_PERMANENTLY,
-        [(
-            header::LOCATION,
-            header::HeaderValue::from_str(&target_uri.to_string()).unwrap(),
-        )],
     )
 }
 
@@ -76,67 +60,17 @@ pub fn new(cfg: Arc<Config>) -> BoxCloneService<Request, Response, BoxError> {
         )
         .boxed();
 
-    let redirect_svc = redirect_handler.into_service().boxed();
-
-    let steer_svc = tower::steer::Steer::new(
-        vec![router, redirect_svc],
-        move |req: &Request, _services: &[_]| {
-            let needs_https_redirect = {
-                let is_https =
-                    // Check x-forwarded-proto header
-                    req
-                        .headers()
-                        .get("x-forwarded-proto")
-                        .map(header::HeaderValue::to_str)
-                        .and_then(Result::ok)
-                        .map(|proto| proto == "https")
-                        .unwrap_or(false)
-                        ;
-                cfg.https_redirect && !is_https
-            };
-
-            let needs_host_redirect = cfg
-                .host_redirect
-                .as_ref()
-                .map(|canonical_host| {
-                    let host_matches = req
-                        .headers()
-                        .get(header::HOST)
-                        .map(header::HeaderValue::to_str)
-                        .and_then(Result::ok)
-                        .map(|host| host == canonical_host)
-                        .unwrap_or(false);
-                    !host_matches
-                })
-                .unwrap_or(false);
-
-            let is_health_check = req.uri().path() == HEALTH_CHECK_ENDPOINT
-                // && req
-                //     .headers()
-                //     .get(header::USER_AGENT)
-                //     .map(header::HeaderValue::to_str)
-                //     .and_then(Result::ok)
-                //     .map(|user_agent| user_agent == "Consul Health Check")
-                //     .unwrap_or(false)
-                ;
-
-            let needs_redirect = (needs_https_redirect || needs_host_redirect) && !is_health_check;
-
-            // tracing::debug!("uri: {:?}", req.uri());
-            // tracing::debug!("headers: {:?}", req.headers());
-            // tracing::debug!("needs_https_redirect: {needs_https_redirect}, needs_host_redirect: {needs_host_redirect}, is_health_check: {is_health_check}, needs_redirect: {needs_redirect}");
-
-            if !needs_redirect {
-                0 // Index of `router`
-            } else {
-                1 // Index of `redirect_svc`
-            }
-        },
+    let redirector = redirect::RequestRedirect::new(
+        cfg.host_redirect
+            .clone()
+            .unwrap_or_else(|| "localhost".to_string()),
+        HEALTH_CHECK_ENDPOINT,
     );
 
     ServiceBuilder::new()
         .concurrency_limit(10)
         .buffer(100)
-        .service(steer_svc)
+        .layer(RedirectLayer::new(redirector))
+        .service(router)
         .boxed_clone()
 }
