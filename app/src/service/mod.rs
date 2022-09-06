@@ -6,16 +6,17 @@ use axum::{
     http::{self, StatusCode, Uri},
     routing, BoxError, Router,
 };
-
+use http_redirect::RedirectLayer;
 use tower::{util::BoxCloneService, ServiceBuilder, ServiceExt};
-use tower_http::services::ServeDir;
-
+use tower_http::{
+    compression::{CompressionBody, CompressionLayer},
+    services::ServeDir,
+};
 use tracing_unwrap::ResultExt;
 
 use std::sync::Arc;
 
 use crate::config::Config;
-use http_redirect::RedirectLayer;
 
 pub type Request = axum::http::Request<RequestBody>;
 pub type RequestBody = axum::body::Body;
@@ -60,17 +61,17 @@ pub fn new(cfg: Arc<Config>) -> BoxCloneService<Request, Response, BoxError> {
         )
         .boxed();
 
-    let redirector = redirect::RequestRedirect::new(
-        cfg.host_redirect
-            .clone()
-            .unwrap_or_else(|| "localhost".to_string()),
-        HEALTH_CHECK_ENDPOINT,
-    );
-
     ServiceBuilder::new()
         .concurrency_limit(10)
         .buffer(100)
-        .layer(RedirectLayer::new(redirector))
+        .map_response(|response: http::Response<CompressionBody<_>>| {
+            response.map(|b| b.map_err(axum::Error::new).boxed_unsync())
+        })
+        .layer(CompressionLayer::new())
+        .option_layer(cfg.host_redirect.as_ref().map(|host| {
+            tracing::info!("adding host redirect layer with host: {}", host);
+            RedirectLayer::new(redirect::RequestRedirect::new(host, HEALTH_CHECK_ENDPOINT))
+        }))
         .service(router)
         .boxed_clone()
 }

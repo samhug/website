@@ -53,7 +53,14 @@ where
             .map(|v| v == "https")
             .unwrap_or(false);
 
-        let is_health_check = request.uri().path() == self.healthcheck_uri;
+        let is_health_check = request.uri().path() == self.healthcheck_uri
+            || request
+                .headers()
+                .get(header::USER_AGENT)
+                .map(header::HeaderValue::to_str)
+                .and_then(Result::ok)
+                .map(|v| v == "Consul Health Check")
+                .unwrap_or(false);
 
         tracing::trace!("is_https_uri: {is_https_uri}, is_https_forwarded: {is_https_forwarded}, is_health_check: {is_health_check}");
 
