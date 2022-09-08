@@ -10,4 +10,4 @@
 `flyctl auth login` or `export FLY_API_TOKEN=...`
 
 - Deploy
-`eval (nix-build -A deployScript)`
+`eval $(nix-build -A deployScript)`
