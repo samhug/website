@@ -38,7 +38,7 @@ let
     ];
     env = {
       APP_LISTEN_ADDR = "0.0.0.0:${toString internalPort}";
-      APP_HOST_REDIRECT = "sa.h-h.ug";
+      APP_HOST_REDIRECT = "sa.m-h.ug";
       APP_STATIC_FILES_DIR = "/www/static";
     }
     // lib.optionalAttrs (rustLog != null) { RUST_LOG = rustLog; }
